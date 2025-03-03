@@ -20,6 +20,7 @@ runs:
   steps:
     - run: |
         chmod +x ${GITHUB_ACTION_PATH}/matrixai-env-setup.sh
+        ${GITHUB_ACTION_PATH}/matrixai-env-setup.sh
       shell: bash
       env:
         INPUT_EXTRA_NIX_CONFIG: |
@@ -55,6 +56,17 @@ runs:
         INPUT_ENABLE_KVM: ${{ inputs.enable_kvm }}
         GITHUB_TOKEN: ${{ github.token }}
     - run: |
+        # Source Nix
+        if [ -e ~/.nix-profile/etc/profile.d/nix.sh ]; then
+          . ~/.nix-profile/etc/profile.d/nix.sh
+        elif [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
+          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+        fi
+        
+        # Ensure nix is in PATH for this step and future steps
+        echo "PATH=$PATH:/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin" >> $GITHUB_ENV
+        
+        # Now install the packages
         nix profile install nixpkgs-matrix#cacert nixpkgs-matrix#tzdata
         TZDATA=$(nix eval --raw nixpkgs-matrix#tzdata.outPath)
         CACERT=$(nix eval --raw nixpkgs-matrix#cacert.outPath)

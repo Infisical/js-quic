@@ -7,11 +7,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  use-native-library-js-tag:
+  use-library-js-tag:
     permissions:
       contents: write
       actions: write
       checks: write
-    uses: MatrixAI/.github/.github/workflows/native-library-js-tag.yml@master
+    uses: ./.github/workflows/release.yaml
     secrets:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

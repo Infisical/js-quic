@@ -66,7 +66,7 @@ function requireBinding(targets: Array<string>): Quiche {
       if (e.code !== 'MODULE_NOT_FOUND') throw e;
     }
   }
-  const npmTargets = targets.map((target) => `@matrixai/quic-${target}`);
+  const npmTargets = targets.map((target) => `@infisical/quic-${target}`);
   for (const npmTarget of npmTargets) {
     try {
       return require(npmTarget);

@@ -19,7 +19,7 @@ runs:
   using: 'composite'
   steps:
     - run: |
-        ${GITHUB_ACTION_PATH}/matrixai-env-setup.sh
+        chmod +x ${GITHUB_ACTION_PATH}/matrixai-env-setup.sh
       shell: bash
       env:
         INPUT_EXTRA_NIX_CONFIG: |

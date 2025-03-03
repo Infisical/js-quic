@@ -1,0 +1,227 @@
+name: "CI / Library JS Tag"
+
+on:
+  workflow_call:
+    secrets:
+      NPM_TOKEN:
+        required: true
+
+jobs:
+  # Lint the code
+  tag-lint:
+    name: "Tag / Lint"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/matrixai-env-setup
+      - name: Run linting
+        run: |
+          nix develop .#ci --command bash -c $'
+          npm run lint
+          npm run lint-shell
+          '
+
+  # Build the distribution - JS is platform-agnostic
+  tag-build:
+    name: "Tag / Build"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    needs: tag-lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/matrixai-env-setup
+      - name: Run build
+        run: |
+          nix develop .#ci --command bash -c $'
+          npm run build --verbose
+          '
+      - name: Upload Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: ./dist
+
+  tag-platforms:
+    name: "Tag / Platforms"
+    needs:
+      - tag-build
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      actions: write
+      checks: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            os: ubuntu-latest
+            env:
+              npm_config_arch: "x64"
+              RUST_BACKTRACE: "1"
+            script: |
+              nix develop .#ci --command bash -c $'
+              npm run prebuild --verbose -- --production
+              npm test -- --ci --coverage
+              npm run bench
+              '
+          - platform: windows
+            os: windows-latest
+            env:
+              npm_config_arch: "x64"
+              RUST_BACKTRACE: "1"
+              LIBCLANG_PATH: "C:\\Program Files\\LLVM\\bin"
+            script: |
+              mkdir -Force "$CI_PROJECT_DIR/tmp"
+              Import-Module $env:ChocolateyInstall\helpers\chocolateyProfile.psm1
+              ./scripts/choco-install.ps1
+              refreshenv
+              npm install --ignore-scripts
+              $env:Path = "$(npm root)\.bin;" + $env:Path
+              npm run prebuild --verbose -- --production
+              npm test -- --ci --coverage
+              npm run bench
+          - platform: macos
+            os: macos-latest
+            env:
+              RUST_BACKTRACE: "1"
+            script: |
+              eval "$(brew shellenv)"
+              ./scripts/brew-install.sh
+              hash -r
+              npm install --ignore-scripts
+              export PATH="$(npm root)/.bin:$PATH"
+              export PATH="$HOME/.cargo/bin:$PATH"
+              npm run prebuild --verbose -- --arch x64 --production
+              npm run prebuild --verbose -- --arch arm64 --production
+              lipo -create -output prebuild/quic-darwin-x64+arm64.node prebuild/quic-darwin-arm64.node prebuild/quic-darwin-x64.node
+              rm -rf node_modules/@matrixai/quic-*
+              npm test -- --ci --coverage
+              npm run bench
+    steps:
+      - uses: actions/checkout@v4
+      - if: matrix.platform == 'linux'
+        uses: ./.github/workflows/matrixai-env-setup
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: ./dist
+      - name: Build
+        env: ${{ matrix.env }}
+        run: ${{ matrix.script }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prebuild-${{ matrix.platform }}
+          path: ./prebuild
+
+
+  # Publish the prerelease
+  tag-prerelease:
+    name: "Tag / Pre-release"
+    runs-on: ubuntu-latest
+    concurrency:
+      group: tag-prerelease
+      cancel-in-progress: false
+    needs:
+      - tag-platforms
+    permissions:
+      contents: write
+    if: startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/matrixai-env-setup
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: prebuild*
+          path: prebuild
+          merge-multiple: true
+      - name: Publishing library prerelease
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ./.npmrc
+          nix develop .#ci --command bash -c $'
+          npm publish --tag prerelease --access public
+          '
+          for d in prebuild/*; do
+            tar \
+              --create \
+              --verbose \
+              --file="prebuild/$(basename $d).tar" \
+              --directory=prebuild \
+              "$(basename $d)"
+          done
+          nix develop .#ci --command bash -c $'
+          gh release \
+            create "$GITHUB_REF_NAME" \
+            prebuild/*.tar \
+            --title "$GITHUB_REF_NAME-$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            --notes "" \
+            --prerelease \
+            --target staging \
+            --repo "$GITHUB_REPOSITORY"
+          '
+      - name: Remove `.npmrc`
+        if: success() || failure()
+        run: |
+          rm -f ./.npmrc
+
+  # Publish the release
+  tag-release:
+    name: "Tag / Release"
+    runs-on: ubuntu-latest
+    concurrency:
+      group: tag-release
+      cancel-in-progress: false
+    needs:
+      - tag-platforms
+    permissions:
+      contents: write
+    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/matrixai-env-setup
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: prebuild*
+          path: prebuild
+          merge-multiple: true
+      - name: Publishing library release
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ./.npmrc
+          nix develop .#ci --command bash -c $'
+          npm publish --access public
+          '
+          for d in prebuild/*; do
+            tar \
+              --create \
+              --verbose \
+              --file="prebuild/$(basename $d).tar" \
+              --directory=prebuild \
+              "$(basename $d)"
+          done
+          nix develop .#ci --command bash -c $'
+          gh release \
+            create "$GITHUB_REF_NAME" \
+            prebuild/*.tar \
+            --title "$GITHUB_REF_NAME-$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            --notes "" \
+            --target master \
+            --repo "$GITHUB_REPOSITORY"
+          '
+      - name: Remove `.npmrc`
+        if: success() || failure()
+        run: |
+          rm -f ./.npmrc

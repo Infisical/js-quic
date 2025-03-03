@@ -1,0 +1,65 @@
+name: 'MatrixAI Environment Setup'
+description: 'Installs Nix on GitHub Actions for the supported platforms: Linux and macOS.'
+inputs:
+  extra_nix_config:
+    description: 'Gets appended to `/etc/nix/nix.conf` if passed.'
+  github_access_token:
+    description: 'Configure nix to pull from github using the given github token.'
+  install_url:
+    description: 'Installation URL that will contain a script to install Nix.'
+  install_options:
+    description: 'Additional installer flags passed to the installer script.'
+  nix_path:
+    description: 'Set NIX_PATH environment variable.'
+  enable_kvm:
+    description: 'Enable KVM for hardware-accelerated virtualization on Linux, if available.'
+    required: false
+    default: "true"
+runs:
+  using: 'composite'
+  steps:
+    - run: |
+        ${GITHUB_ACTION_PATH}/matrixai-env-setup.sh
+      shell: bash
+      env:
+        INPUT_EXTRA_NIX_CONFIG: |
+          ${{ inputs.extra_nix_config }}
+          substituters = https://cache.nixos.org/
+          trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+        INPUT_REGISTRY: |
+          {
+            "flakes": [
+              {
+                "exact": true,
+                "from": { "id": "nixpkgs-matrix", "type": "indirect" },
+                "to": {
+                  "type": "git",
+                  "url": "https://github.com/MatrixAI/nixpkgs-matrix"
+                }
+              },
+              {
+                "exact": true,
+                "from": { "id": "nixpkgs-matrix-private", "type": "indirect" },
+                "to": {
+                  "type": "git",
+                  "url": "https://github.com/MatrixAI/nixpkgs-matrix-private"
+                }
+              }
+            ],
+            "version": 2
+          }
+        INPUT_GITHUB_ACCESS_TOKEN: ${{ inputs.github_access_token }}
+        INPUT_INSTALL_OPTIONS: ${{ inputs.install_options }}
+        INPUT_INSTALL_URL: ${{ inputs.install_url }}
+        INPUT_NIX_PATH: ${{ inputs.nix_path }}
+        INPUT_ENABLE_KVM: ${{ inputs.enable_kvm }}
+        GITHUB_TOKEN: ${{ github.token }}
+    - run: |
+        nix profile install nixpkgs-matrix#cacert nixpkgs-matrix#tzdata
+        TZDATA=$(nix eval --raw nixpkgs-matrix#tzdata.outPath)
+        CACERT=$(nix eval --raw nixpkgs-matrix#cacert.outPath)
+        echo "TZDIR=$TZDATA/share/zoneinfo" >> "$GITHUB_ENV"
+        echo "GIT_SSL_CAINFO=$CACERT/etc/ssl/certs/ca-bundle.crt" >> "$GITHUB_ENV"
+        echo "NIX_SSL_CERT_FILE=$CACERT/etc/ssl/certs/ca-bundle.crt" >> "$GITHUB_ENV"
+      shell: bash
+        

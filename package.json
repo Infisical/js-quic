@@ -1,6 +1,6 @@
 {
   "name": "@infisical/quic",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "author": "Infisical",
   "contributors": [
     {
@@ -48,11 +48,13 @@
     "ip-num": "^1.5.0"
   },
   "optionalDependencies": {
-    "@infisical/quic-darwin-arm64": "1.0.7",
-    "@infisical/quic-darwin-universal": "1.0.7",
-    "@infisical/quic-darwin-x64": "1.0.7",
-    "@infisical/quic-linux-x64": "1.0.7",
-    "@infisical/quic-win32-x64": "1.0.7"
+    "@infisical/quic-darwin-arm64": "1.0.8",
+    "@infisical/quic-darwin-universal": "1.0.8",
+    "@infisical/quic-darwin-x64": "1.0.8",
+    "@infisical/quic-linux-x64": "1.0.8",
+    "@infisical/quic-win32-x64": "1.0.8",
+    "@infisical/quic-linux-arm64": "1.0.8",
+    "@infisical/quic-linux-arm": "1.0.8"
   },
   "devDependencies": {
     "@fast-check/jest": "^1.1.0",

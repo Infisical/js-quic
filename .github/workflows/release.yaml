@@ -123,7 +123,7 @@ jobs:
               npm run bench
     steps:
       - uses: actions/checkout@v4
-      - if: matrix.platform == 'linux'
+      - if: startsWith(matrix.platform, 'linux')
         uses: ./.github/workflows/matrixai-env-setup
       - uses: actions/setup-node@v4
         with:

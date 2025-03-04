@@ -79,6 +79,7 @@ jobs:
               npm run prebuild --verbose -- --production
               npm test -- --ci --coverage
               npm run bench
+          - platform: windows
             os: windows-latest
             env:
               npm_config_arch: 'x64'

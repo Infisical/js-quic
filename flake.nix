@@ -24,16 +24,40 @@
               cargo
               cmake
               rustPlatform.bindgenHook
+              gcc-arm-embedded
+              pkgsCross.arm-embedded.buildPackages.gcc
+              (pkgsCross.arm-embedded.buildPackages.stdenv.cc.cc.lib)
+              pkgsCross.aarch64-multiplatform.buildPackages.gcc
+              crossBuildPackages
+            ] ++ lib.optionals stdenv.isLinux [
+              gcc_multi
+              pkg-config
+              libudev-zero
             ];
+            
+            buildInputs = [
+              openssl
+            ];
+
             NIX_DONT_SET_RPATH = true;
             NIX_NO_SELF_RPATH = true;
             RUST_SRC_PATH = "${rustPlatform.rustLibSrc}";
+            
             shellHook = ''
               echo "Entering $(npm pkg get name)"
               set -o allexport
               . <(polykey secrets env js-quic)
               set +o allexport
               set -v
+
+              export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-none-eabi-gcc
+              export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+              export PKG_CONFIG_PATH_arm_unknown_linux_gnueabihf=/usr/lib/arm-linux-gnueabihf/pkgconfig
+              export PKG_CONFIG_PATH_aarch64_unknown_linux_gnu=/usr/lib/aarch64-linux-gnu/pkgconfig
+              
+              rustup target add arm-unknown-linux-gnueabihf
+              rustup target add aarch64-unknown-linux-gnu
+
               ${lib.optionalString ci ''
                 set -o errexit
                 set -o nounset

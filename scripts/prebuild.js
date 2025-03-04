@@ -42,6 +42,10 @@ async function main(argv = process.argv) {
     case 'arm64':
       targetArch = 'aarch64';
       break;
+    case 'arm':
+      // Add proper support for 32-bit ARM
+      targetArch = 'arm';
+      break;
     default:
       console.error('Unsupported architecture');
       process.exitCode = 1;
@@ -69,6 +73,10 @@ async function main(argv = process.argv) {
       console.error('Unsupported platform');
       process.exitCode = 1;
       return process.exitCode;
+  }
+  // For ARM Linux, we need to specify the ARM ABI
+  if (targetArch === 'arm' && targetSystem === 'linux') {
+    targetABI = 'gnueabihf'; // Use hard float ABI for ARM
   }
   const target = [targetArch, targetVendor, targetSystem, targetABI]
     .filter((s) => s != null)

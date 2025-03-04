@@ -76,6 +76,10 @@ jobs:
               npm_config_arch: "arm64"
               RUST_BACKTRACE: "1"
             script: |
+              # Install ARM64 toolchain
+              sudo apt-get update
+              sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+              rustup target add aarch64-unknown-linux-gnu
               nix develop .#ci --command bash -c $'
               npm run prebuild --verbose -- --arch arm64 --production
               '
@@ -85,6 +89,10 @@ jobs:
               npm_config_arch: "arm"
               RUST_BACKTRACE: "1"
             script: |
+              # Install ARM toolchain
+              sudo apt-get update
+              sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+              rustup target add arm-unknown-linux-gnueabihf
               nix develop .#ci --command bash -c $'
               npm run prebuild --verbose -- --arch arm --production
               '

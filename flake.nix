@@ -24,11 +24,9 @@
               cargo
               cmake
               rustPlatform.bindgenHook
-              gcc-arm-embedded
+              # Cross compilation tools
               pkgsCross.arm-embedded.buildPackages.gcc
-              (pkgsCross.arm-embedded.buildPackages.stdenv.cc.cc.lib)
               pkgsCross.aarch64-multiplatform.buildPackages.gcc
-              crossBuildPackages
             ] ++ lib.optionals stdenv.isLinux [
               gcc_multi
               pkg-config
@@ -50,11 +48,13 @@
               set +o allexport
               set -v
 
+              # Setup cross compilation environment variables
               export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-none-eabi-gcc
               export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
               export PKG_CONFIG_PATH_arm_unknown_linux_gnueabihf=/usr/lib/arm-linux-gnueabihf/pkgconfig
               export PKG_CONFIG_PATH_aarch64_unknown_linux_gnu=/usr/lib/aarch64-linux-gnu/pkgconfig
               
+              # Add Rust targets for cross compilation
               rustup target add arm-unknown-linux-gnueabihf
               rustup target add aarch64-unknown-linux-gnu
 

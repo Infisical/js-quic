@@ -1,0 +1,90 @@
+name: 'CI / Test'
+
+on:
+  workflow_dispatch:
+
+jobs:
+  # Lint the code
+  tag-lint:
+    name: 'Tag / Lint'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/matrixai-env-setup
+      - name: Run linting
+        run: |
+          nix develop .#ci --command bash -c $'
+          npm run lint
+          npm run lint-shell
+          '
+
+  # Build the distribution - JS is platform-agnostic
+  tag-build:
+    name: 'Tag / Build'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    needs: tag-lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/matrixai-env-setup
+      - name: Run build
+        run: |
+          nix develop .#ci --command bash -c $'
+          npm run build --verbose
+          '
+      - name: Upload Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: ./dist
+
+  tag-platforms:
+    name: 'Tag / Platforms'
+    needs:
+      - tag-build
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      actions: write
+      checks: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            os: ubuntu-latest
+            env:
+              npm_config_arch: 'x64'
+              RUST_BACKTRACE: '1'
+            script: |
+              nix develop .#ci --command bash -c $'
+              npm run prebuild --verbose -- --production
+              '
+          - platform: linux-arm64
+            os: ubuntu-24.04-arm
+            env:
+              npm_config_arch: 'x64'
+              RUST_BACKTRACE: '1'
+            script: |
+              nix develop .#ci --command bash -c $'
+              npm run prebuild --verbose -- --production
+              '
+    steps:
+      - uses: actions/checkout@v4
+      - if: startsWith(matrix.platform, 'linux')
+        uses: ./.github/workflows/matrixai-env-setup
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: ./dist
+      - name: Build
+        env: ${{ matrix.env }}
+        run: ${{ matrix.script }}

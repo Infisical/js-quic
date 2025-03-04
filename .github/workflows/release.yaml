@@ -70,6 +70,24 @@ jobs:
               npm test -- --ci --coverage
               npm run bench
               '
+          - platform: linux-arm64
+            os: ubuntu-latest
+            env:
+              npm_config_arch: "arm64"
+              RUST_BACKTRACE: "1"
+            script: |
+              nix develop .#ci --command bash -c $'
+              npm run prebuild --verbose -- --arch arm64 --production
+              '
+          - platform: linux-arm
+            os: ubuntu-latest
+            env:
+              npm_config_arch: "arm"
+              RUST_BACKTRACE: "1"
+            script: |
+              nix develop .#ci --command bash -c $'
+              npm run prebuild --verbose -- --arch arm --production
+              '
           - platform: windows
             os: windows-latest
             env:

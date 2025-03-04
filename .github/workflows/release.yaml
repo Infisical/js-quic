@@ -1,4 +1,4 @@
-name: "CI / Library JS Tag"
+name: 'CI / Library JS Tag'
 
 on:
   workflow_call:
@@ -9,7 +9,7 @@ on:
 jobs:
   # Lint the code
   tag-lint:
-    name: "Tag / Lint"
+    name: 'Tag / Lint'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -26,7 +26,7 @@ jobs:
 
   # Build the distribution - JS is platform-agnostic
   tag-build:
-    name: "Tag / Build"
+    name: 'Tag / Build'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -47,7 +47,7 @@ jobs:
           path: ./dist
 
   tag-platforms:
-    name: "Tag / Platforms"
+    name: 'Tag / Platforms'
     needs:
       - tag-build
     runs-on: ${{ matrix.os }}
@@ -62,45 +62,27 @@ jobs:
           - platform: linux
             os: ubuntu-latest
             env:
-              npm_config_arch: "x64"
-              RUST_BACKTRACE: "1"
+              npm_config_arch: 'x64'
+              RUST_BACKTRACE: '1'
             script: |
-              nix develop .#ci --command bash -c $'
+              npm install --ignore-scripts
               npm run prebuild --verbose -- --production
               npm test -- --ci --coverage
               npm run bench
-              '
           - platform: linux-arm64
-            os: ubuntu-latest
+            os: ubuntu-24.04-arm
             env:
-              npm_config_arch: "arm64"
-              RUST_BACKTRACE: "1"
+              npm_config_arch: 'arm64'
+              RUST_BACKTRACE: '1'
             script: |
-              # Install ARM64 toolchain
-              sudo apt-get update
-              sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-              rustup target add aarch64-unknown-linux-gnu
-              nix develop .#ci --command bash -c $'
-              npm run prebuild --verbose -- --arch arm64 --production
-              '
-          - platform: linux-arm
-            os: ubuntu-latest
-            env:
-              npm_config_arch: "arm"
-              RUST_BACKTRACE: "1"
-            script: |
-              # Install ARM toolchain
-              sudo apt-get update
-              sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
-              rustup target add arm-unknown-linux-gnueabihf
-              nix develop .#ci --command bash -c $'
-              npm run prebuild --verbose -- --arch arm --production
-              '
-          - platform: windows
+              npm install --ignore-scripts
+              npm run prebuild --verbose -- --production
+              npm test -- --ci --coverage
+              npm run bench
             os: windows-latest
             env:
-              npm_config_arch: "x64"
-              RUST_BACKTRACE: "1"
+              npm_config_arch: 'x64'
+              RUST_BACKTRACE: '1'
               LIBCLANG_PATH: "C:\\Program Files\\LLVM\\bin"
             script: |
               mkdir -Force "$CI_PROJECT_DIR/tmp"
@@ -115,7 +97,7 @@ jobs:
           - platform: macos
             os: macos-latest
             env:
-              RUST_BACKTRACE: "1"
+              RUST_BACKTRACE: '1'
             script: |
               eval "$(brew shellenv)"
               ./scripts/brew-install.sh
@@ -132,7 +114,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - if: startsWith(matrix.platform, 'linux')
-        uses: ./.github/workflows/matrixai-env-setup
+        run: |
+          echo "Updating package lists..."
+          sudo apt-get update
+          echo "Installing dependencies..."
+          sudo apt-get install -y curl build-essential gcc g++ pkg-config python3 python3-pip cmake git libclang-dev clang
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source "$HOME/.cargo/env"
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -148,10 +136,9 @@ jobs:
           name: prebuild-${{ matrix.platform }}
           path: ./prebuild
 
-
   # Publish the prerelease
   tag-prerelease:
-    name: "Tag / Pre-release"
+    name: 'Tag / Pre-release'
     runs-on: ubuntu-latest
     concurrency:
       group: tag-prerelease
@@ -203,7 +190,7 @@ jobs:
 
   # Publish the release
   tag-release:
-    name: "Tag / Release"
+    name: 'Tag / Release'
     runs-on: ubuntu-latest
     concurrency:
       group: tag-release

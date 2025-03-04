@@ -24,7 +24,7 @@ jobs:
               # nix develop .#ci --command bash -c $'
               npm install
               npm run prebuild --verbose -- --production
-              '
+              ls ./prebuild
           - platform: linux-arm64
             os: ubuntu-24.04-arm
             env:
@@ -34,7 +34,7 @@ jobs:
               # nix develop .#ci --command bash -c $'
               npm install
               npm run prebuild --verbose -- --production
-              '
+              ls ./prebuild
     steps:
       - uses: actions/checkout@v4
       # - if: startsWith(matrix.platform, 'linux')

@@ -11,7 +11,7 @@ This library focuses only on the QUIC protocol. It does not support HTTP3. You c
 ## Installation
 
 ```sh
-npm install --save @matrixai/quic
+npm install --save @infisical/quic
 ```
 
 ## Usage
